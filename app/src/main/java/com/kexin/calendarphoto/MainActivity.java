@@ -2,9 +2,11 @@ package com.kexin.calendarphoto;
 
 import android.app.TimePickerDialog;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.CalendarContract;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.widget.CheckBox;
@@ -15,12 +17,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Calendar;
 
 public class MainActivity extends AppCompatActivity {
@@ -139,8 +144,15 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(intent, EVENT_REQUEST);
     }
 
+    public void takePhotoClicked(View view) {
+        Intent photoIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        if (photoIntent.resolveActivity(getPackageManager()) != null) {
+            startActivityForResult(photoIntent, PHOTO_REQUEST);
+        }
+    }
+
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode,@Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == EVENT_REQUEST) {
@@ -151,13 +163,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         if (requestCode == PHOTO_REQUEST && resultCode == RESULT_OK) {
-            // Load the captured image into the ImageView
-            File imgFile = new File(currentPhotoPath);
-            if (imgFile.exists()) {
-                ivPhoto.setImageURI(Uri.fromFile(imgFile));
-            }
+            Bitmap image = (Bitmap) data.getExtras().get("data");
+            ImageView imageView = findViewById(R.id.iv_photo);
+            imageView.setImageBitmap(image);
         }
     }
-
-
 }

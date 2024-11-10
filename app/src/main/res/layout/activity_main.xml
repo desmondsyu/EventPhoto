@@ -148,7 +148,6 @@
                     android:layout_margin="8dp"
                     android:background="@color/black"
                     android:contentDescription="my_photo"
-                    android:scaleType="centerInside"
                     app:layout_constraintBottom_toTopOf="@id/gl_h80"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
