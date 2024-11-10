@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.CalendarContract;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -25,12 +26,18 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
     private static final int EVENT_REQUEST = 1000;
     private static final int PHOTO_REQUEST = 1100;
+    private static final int SHARE_REQUEST = 1200;
 
     EditText etEventTitle;
     TextView tvStartTime;
@@ -41,7 +48,6 @@ public class MainActivity extends AppCompatActivity {
     Switch swAccessType;
 
     ImageView ivPhoto;
-    String currentPhotoPath;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -151,8 +157,43 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void storeImage(Bitmap image) {
+        File pictureFile = getOutputMediaFile();
+        if (pictureFile == null) {
+            Toast.makeText(this, "Failed to create file", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        try (FileOutputStream fos = new FileOutputStream(pictureFile)) {
+            image.compress(Bitmap.CompressFormat.JPEG, 90, fos);
+            Log.d("MainActivity", "Image saved successfully.");
+        } catch (FileNotFoundException e) {
+            Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show();
+        } catch (IOException e) {
+            Toast.makeText(this, "Failed to save", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private File getOutputMediaFile() {
+        File mediaStorageDir = new File(getFilesDir(), "CalendarPhotos");
+
+        if (!mediaStorageDir.exists()) {
+            if (!mediaStorageDir.mkdirs()) {
+                Log.e("MainActivity", "Failed to create directory for storing images.");
+                return null;
+            } else {
+                Log.d("MainActivity", "Directory created successfully.");
+            }
+        }
+
+        String timeStamp = new SimpleDateFormat("ddMMyyyy_HHmm", Locale.getDefault()).format(new Date());
+        String mImageName = "IMG_" + timeStamp + ".jpeg";
+        Log.d("MainActivity", "Image created successfully.");
+        return new File(mediaStorageDir, mImageName);
+    }
+
     @Override
-    protected void onActivityResult(int requestCode, int resultCode,@Nullable Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == EVENT_REQUEST) {
@@ -161,11 +202,44 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 Toast.makeText(this, "Event was added failed.", Toast.LENGTH_LONG).show();
             }
-        }
-        if (requestCode == PHOTO_REQUEST && resultCode == RESULT_OK) {
+        } else if (requestCode == PHOTO_REQUEST && resultCode == RESULT_OK) {
             Bitmap image = (Bitmap) data.getExtras().get("data");
-            ImageView imageView = findViewById(R.id.iv_photo);
-            imageView.setImageBitmap(image);
+            if (image == null) {
+                Log.e("MainActivity", "Captured image is null.");
+                return;
+            }
+            storeImage(image);
+            ivPhoto.setImageBitmap(image);
+        } else if (requestCode == SHARE_REQUEST && resultCode == RESULT_OK) {
+            if (data != null && data.getData() != null) {
+                String dataString = data.getDataString();
+                if (dataString != null) {
+                    Log.d("ans", "onActivityResult, Type: " + data.getType());
+                    Toast.makeText(this, "Result data " + dataString, Toast.LENGTH_LONG).show();
+                }
+            } else {
+                Log.d("ans", "onActivityResult: Received NULL data");
+            }
         }
+    }
+
+    public void shareClicked(View view) {
+        File imageFile = getOutputMediaFile();
+        if (imageFile == null) {
+            Toast.makeText(this, "No image to share", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Uri imageUri = FileProvider.getUriForFile(this,
+                "com.kexin.calendarphoto.fileprovider", imageFile);
+
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("image/jpeg");
+        shareIntent.putExtra(Intent.EXTRA_STREAM, imageUri);
+        shareIntent.putExtra(Intent.EXTRA_TEXT, "Check out my event photo!");
+
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+        startActivityForResult(Intent.createChooser(shareIntent, "Share via"), SHARE_REQUEST);
     }
 }
