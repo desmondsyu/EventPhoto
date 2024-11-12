@@ -37,7 +37,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
     private static final int EVENT_REQUEST = 1000;
     private static final int PHOTO_REQUEST = 1100;
-    private static final int SHARE_REQUEST = 1200;
+    private static final int NOTE_REQUEST = 1200;
 
     EditText etEventTitle;
     TextView tvStartTime;
@@ -48,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
     Switch swAccessType;
 
     ImageView ivPhoto;
+    Uri imageUri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -210,36 +211,31 @@ public class MainActivity extends AppCompatActivity {
             }
             storeImage(image);
             ivPhoto.setImageBitmap(image);
-        } else if (requestCode == SHARE_REQUEST && resultCode == RESULT_OK) {
-            if (data != null && data.getData() != null) {
-                String dataString = data.getDataString();
-                if (dataString != null) {
-                    Log.d("ans", "onActivityResult, Type: " + data.getType());
-                    Toast.makeText(this, "Result data " + dataString, Toast.LENGTH_LONG).show();
-                }
+        } else if (requestCode == NOTE_REQUEST && resultCode == RESULT_OK) {
+            if (resultCode == RESULT_OK) {
+                Toast.makeText(this, "Email was added successfully.", Toast.LENGTH_LONG).show();
             } else {
-                Log.d("ans", "onActivityResult: Received NULL data");
+                Toast.makeText(this, "Email was added failed.", Toast.LENGTH_LONG).show();
             }
         }
     }
 
-    public void shareClicked(View view) {
+    public void emailClicked(View view) {
         File imageFile = getOutputMediaFile();
-        if (imageFile == null) {
+        if (imageFile == null || !imageFile.exists()) {
             Toast.makeText(this, "No image to share", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        Uri imageUri = FileProvider.getUriForFile(this,
+        imageUri = FileProvider.getUriForFile(this,
                 "com.kexin.calendarphoto.fileprovider", imageFile);
 
-        Intent shareIntent = new Intent(Intent.ACTION_SEND);
-        shareIntent.setType("image/jpeg");
-        shareIntent.putExtra(Intent.EXTRA_STREAM, imageUri);
-        shareIntent.putExtra(Intent.EXTRA_TEXT, "Check out my event photo!");
-
-        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-        startActivityForResult(Intent.createChooser(shareIntent, "Share via"), SHARE_REQUEST);
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("*/*");
+        intent.putExtra(Intent.EXTRA_SUBJECT, "Photo");
+        intent.putExtra(Intent.EXTRA_STREAM, imageUri);
+        if (intent.resolveActivity(getPackageManager()) != null) {
+            startActivity(intent);
+        }
     }
 }
